@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:kazumi/request/core/dio_factory.dart';
 import 'package:kazumi/request/core/network_error_mapper.dart';
+import 'package:kazumi/request/core/network_exception.dart';
 import 'package:kazumi/utils/dandan_credentials.dart';
 import 'package:kazumi/utils/http_headers.dart';
 import 'package:kazumi/utils/crypto.dart';
@@ -16,6 +17,15 @@ class DanmakuClient {
     Map<String, dynamic> headers = const {},
     CancelToken? cancelToken,
   }) async {
+    // Builds without --dart-define keys would otherwise fail with an
+    // unexplained authentication error.
+    if (dandanCredentials['id']!.isEmpty ||
+        dandanCredentials['value']!.isEmpty) {
+      throw const NetworkException(
+        type: NetworkExceptionType.unknown,
+        message: '此版本未配置弹弹play API 密钥，无法加载弹幕',
+      );
+    }
     final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     final uri = Uri.parse(url);
     final requestHeaders = <String, dynamic>{
