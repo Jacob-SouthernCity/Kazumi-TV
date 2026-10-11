@@ -17,6 +17,7 @@ import 'package:kazumi/plugins/plugins_controller.dart';
 import 'package:kazumi/services/logging/logger.dart';
 import 'package:kazumi/services/storage/storage.dart';
 import 'package:kazumi/services/update/startup_update_check.dart';
+import 'package:kazumi/utils/device.dart';
 
 class OnboardingPage extends StatefulWidget {
   const OnboardingPage({
@@ -45,6 +46,7 @@ enum _OnboardingStep {
 
 class _OnboardingPageState extends State<OnboardingPage> {
   final _pageController = PageController();
+  final _primaryButtonFocus = FocusNode();
   final _steps = [
     _OnboardingStep.welcome,
     if (Platform.isAndroid) _OnboardingStep.updates,
@@ -70,6 +72,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
   @override
   void dispose() {
     _pageController.dispose();
+    _primaryButtonFocus.dispose();
     super.dispose();
   }
 
@@ -118,6 +121,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
         duration: const Duration(milliseconds: 400),
         curve: Curves.easeInOutCubicEmphasized,
       );
+    }
+    if (isTV() && mounted) {
+      _primaryButtonFocus.requestFocus();
     }
   }
 
@@ -185,6 +191,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
         child: Text(_currentIndex == 0 ? '退出' : '上一步'),
       );
       final primary = FilledButton.icon(
+        focusNode: _primaryButtonFocus,
+        autofocus: isTV(),
         style: FilledButton.styleFrom(
           minimumSize: const Size(176, 56),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),

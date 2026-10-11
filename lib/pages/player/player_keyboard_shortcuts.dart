@@ -7,6 +7,19 @@ import 'package:kazumi/utils/constants.dart';
 
 typedef PlayerShortcutAction = FutureOr<void> Function();
 
+enum PlayerKeyPreHandling {
+  /// The pre handler consumed the key.
+  handled,
+
+  /// Skip player shortcuts and let the focused control handle the key.
+  deferToFocus,
+
+  /// Continue with the regular player shortcuts.
+  continueShortcuts,
+}
+
+typedef PlayerKeyPreHandler = PlayerKeyPreHandling Function(KeyEvent event);
+
 class PlayerLongPressShortcutActions {
   const PlayerLongPressShortcutActions({
     required this.onRepeat,
@@ -31,6 +44,7 @@ class PlayerKeyboardShortcuts extends StatefulWidget {
     this.longPressActions = const <String, PlayerLongPressShortcutActions>{},
     this.isBlocked,
     this.shortcuts,
+    this.preHandler,
   });
 
   final FocusNode focusScopeNode;
@@ -38,6 +52,7 @@ class PlayerKeyboardShortcuts extends StatefulWidget {
   final Map<String, PlayerLongPressShortcutActions> longPressActions;
   final bool Function()? isBlocked;
   final Map<String, List<String>>? shortcuts;
+  final PlayerKeyPreHandler? preHandler;
 
   @override
   State<PlayerKeyboardShortcuts> createState() =>
@@ -93,6 +108,16 @@ class _PlayerKeyboardShortcutsState extends State<PlayerKeyboardShortcuts> {
 
     if (!_shouldHandleShortcut()) {
       return KeyEventResult.ignored;
+    }
+
+    switch (widget.preHandler?.call(event) ??
+        PlayerKeyPreHandling.continueShortcuts) {
+      case PlayerKeyPreHandling.handled:
+        return KeyEventResult.handled;
+      case PlayerKeyPreHandling.deferToFocus:
+        return KeyEventResult.ignored;
+      case PlayerKeyPreHandling.continueShortcuts:
+        break;
     }
 
     final keyLabel = event.logicalKey.keyLabel.isNotEmpty

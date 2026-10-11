@@ -15,6 +15,7 @@ import 'package:kazumi/services/logging/logger.dart';
 import 'package:kazumi/services/player/pip_utils.dart';
 import 'package:kazumi/services/sync/webdav.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 import 'package:kazumi/pages/player/player_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -23,6 +24,7 @@ import 'package:kazumi/pages/video/video_controller.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:canvas_danmaku/canvas_danmaku.dart';
 import 'package:kazumi/bean/dialog/dialog_helper.dart';
+import 'package:kazumi/bean/widget/tv_remote_navigation.dart';
 import 'package:kazumi/pages/player/video_details_sheet.dart';
 import 'package:screen_brightness_platform_interface/screen_brightness_platform_interface.dart';
 import 'package:kazumi/pages/history/history_controller.dart';
@@ -37,6 +39,7 @@ import 'package:saver_gallery/saver_gallery.dart';
 import 'package:kazumi/services/player/audio_controller.dart';
 import 'package:kazumi/services/player/timed_shutdown_service.dart';
 import 'package:kazumi/utils/device.dart';
+import 'package:kazumi/utils/tv_focus.dart';
 import 'package:kazumi/services/platform/player_menu_service.dart';
 
 class PlayerItem extends StatefulWidget {
@@ -83,6 +86,9 @@ class _PlayerItemState extends State<PlayerItem>
   late final Map<String, PlayerShortcutAction> keyboardActions;
   late final Map<String, PlayerLongPressShortcutActions>
       keyboardLongPressActions;
+  final FocusNode _tvPlayPauseFocus = FocusNode();
+  final FocusNode _tvProgressFocus = FocusNode();
+  Timer? _tvScrubCommitTimer;
 
   late bool webDavEnable;
   late bool webDavEnableHistory;
@@ -455,15 +461,19 @@ class _PlayerItemState extends State<PlayerItem>
       playerController.panel.showPlaySpeed = false;
       await setPlaybackSpeed(lastPlayerSpeed);
     } else {
-      try {
-        await _seekWithPlayerTimer(
-          () => playerController.seekBy(
-            Duration(seconds: playerController.playback.arrowKeySkipTime),
-          ),
-        );
-      } catch (e) {
-        KazumiLogger().e('PlayerController: seek failed', error: e);
-      }
+      await _seekForwardBySkipTime();
+    }
+  }
+
+  Future<void> _seekForwardBySkipTime() async {
+    try {
+      await _seekWithPlayerTimer(
+        () => playerController.seekBy(
+          Duration(seconds: playerController.playback.arrowKeySkipTime),
+        ),
+      );
+    } catch (e) {
+      KazumiLogger().e('PlayerController: seek failed', error: e);
     }
   }
 
@@ -986,6 +996,149 @@ class _PlayerItemState extends State<PlayerItem>
     _panelVisibilityController.reverse();
     _cancelHideTimer();
     playerController.panel.showVideoController = false;
+    // Hidden controls stay focusable; the episode side panel keeps its focus.
+    if (isTV() && _isFocusInPlayer) {
+      widget.keyboardFocus.requestFocus();
+    }
+  }
+
+  bool get _isFocusInPlayer {
+    final primary = FocusManager.instance.primaryFocus;
+    return primary != null &&
+        (primary == widget.keyboardFocus ||
+            primary.ancestors.contains(widget.keyboardFocus));
+  }
+
+  late final Map<LogicalKeyboardKey, PlayerShortcutAction> _tvMediaKeyActions =
+      {
+        LogicalKeyboardKey.mediaPlayPause: () => playerController.playOrPause(),
+        LogicalKeyboardKey.mediaPlay: () => playerController.play(),
+        LogicalKeyboardKey.mediaPause: () => playerController.pause(),
+        LogicalKeyboardKey.mediaFastForward: _seekForwardBySkipTime,
+        LogicalKeyboardKey.mediaRewind: handleShortcutRewind,
+        LogicalKeyboardKey.mediaTrackNext: () => handlePreNextEpisode('next'),
+        LogicalKeyboardKey.mediaTrackPrevious: () =>
+            handlePreNextEpisode('prev'),
+      };
+
+  /// Sheets, dialogs and the episode side panel hold focus outside the
+  /// player, so their Back keeps its usual meaning.
+  bool _hideTVControlsOnBack() {
+    if (!_isFocusInPlayer ||
+        !playerController.panel.showVideoController ||
+        !_canHidePlayerPanel) {
+      return false;
+    }
+    hideVideoController();
+    return true;
+  }
+
+  void _showTVControls() {
+    showVideoController();
+    _tvPlayPauseFocus.requestFocus();
+  }
+
+  static const Duration _tvScrubCommitDelay = Duration(milliseconds: 700);
+
+  /// Moves the progress preview one skip step; the real seek runs once the
+  /// remote has been idle, so holding a key scrubs instead of seeking on
+  /// every repeat.
+  void _tvScrub(TraversalDirection direction) {
+    final step = Duration(seconds: playerController.playback.arrowKeySkipTime);
+    final forward = direction == TraversalDirection.right;
+    final target =
+        playerController.playback.currentPosition + (forward ? step : -step);
+    if (!playerController.seeking.updateInteractiveSeek(target)) {
+      handleProgressBarDragStart();
+      playerController.seeking.updateInteractiveSeek(target);
+    }
+    playerController.panel
+      ..showSeekTime = true
+      ..seekDirection = forward ? 1 : -1;
+    _tvScrubCommitTimer?.cancel();
+    _tvScrubCommitTimer = Timer(_tvScrubCommitDelay, _commitTVScrub);
+  }
+
+  void _commitTVScrub() {
+    playerController.panel
+      ..showSeekTime = false
+      ..seekDirection = 0;
+    unawaited(_finishInteractiveSeek());
+  }
+
+  KeyEventResult _handleTVProgressKey(FocusNode node, KeyEvent event) {
+    final direction = tvArrowDirections[event.logicalKey];
+    if (event is KeyUpEvent ||
+        (direction != TraversalDirection.left &&
+            direction != TraversalDirection.right)) {
+      return KeyEventResult.ignored;
+    }
+    _tvScrub(direction!);
+    return KeyEventResult.handled;
+  }
+
+  /// Remote control mapping: with focus on the player, left and right scrub
+  /// on the progress bar and the other keys bring up the panel controls;
+  /// with focus on a control, the D-pad moves between controls.
+  PlayerKeyPreHandling _handleTVKeyEvent(KeyEvent event) {
+    if (!isTV()) {
+      return PlayerKeyPreHandling.continueShortcuts;
+    }
+    final key = event.logicalKey;
+
+    final mediaAction = _tvMediaKeyActions[key];
+    if (mediaAction != null) {
+      if (event is KeyDownEvent) {
+        unawaited(Future.sync(mediaAction));
+      }
+      return PlayerKeyPreHandling.handled;
+    }
+
+    final panelVisible = playerController.panel.showVideoController;
+    final focusOnPlayerNode =
+        FocusManager.instance.primaryFocus == widget.keyboardFocus;
+
+    final direction = tvArrowDirections[key];
+    if (focusOnPlayerNode &&
+        (direction == TraversalDirection.left ||
+            direction == TraversalDirection.right)) {
+      if (event is! KeyUpEvent) {
+        showVideoController();
+        _tvProgressFocus.requestFocus();
+        _tvScrub(direction!);
+      }
+      return PlayerKeyPreHandling.handled;
+    }
+
+    if (!panelVisible) {
+      if (tvSelectKeys.contains(key)) {
+        if (event is KeyDownEvent) {
+          unawaited(playerController.playOrPause());
+          _showTVControls();
+        }
+        return PlayerKeyPreHandling.handled;
+      }
+      if (key == LogicalKeyboardKey.arrowUp ||
+          key == LogicalKeyboardKey.arrowDown) {
+        if (event is KeyDownEvent) {
+          _showTVControls();
+        }
+        return PlayerKeyPreHandling.handled;
+      }
+      return PlayerKeyPreHandling.continueShortcuts;
+    }
+
+    if (tvArrowDirections.containsKey(key) || tvSelectKeys.contains(key)) {
+      showVideoController();
+      if (focusOnPlayerNode) {
+        if (event is KeyDownEvent) {
+          _tvPlayPauseFocus.requestFocus();
+        }
+        return PlayerKeyPreHandling.handled;
+      }
+      return PlayerKeyPreHandling.deferToFocus;
+    }
+    return PlayerKeyPreHandling.continueShortcuts;
   }
 
   PlayerPanelHold acquirePlayerPanelHold() {
@@ -1268,6 +1421,9 @@ class _PlayerItemState extends State<PlayerItem>
     playerController = widget.playerController;
     _initKeyboardActions();
     _initPlayerMenu();
+    if (isTV()) {
+      TVRemoteNavigation.addBackHandler(_hideTVControlsOnBack);
+    }
     _fullscreenListener = mobx.reaction<bool>(
       (_) => videoPageController.isFullscreen,
       (_) {
@@ -1372,6 +1528,10 @@ class _PlayerItemState extends State<PlayerItem>
     mouseScrollerTimer?.cancel();
     _adjustmentHudHideTimer?.cancel();
     _panelVisibilityController.dispose();
+    _tvPlayPauseFocus.dispose();
+    _tvProgressFocus.dispose();
+    _tvScrubCommitTimer?.cancel();
+    TVRemoteNavigation.removeBackHandler(_hideTVControlsOnBack);
     _screenshotFeedbackController.dispose();
     _disposePlayerMenu();
     if (Platform.isAndroid) {
@@ -1426,6 +1586,7 @@ class _PlayerItemState extends State<PlayerItem>
                       actions: keyboardActions,
                       longPressActions: keyboardLongPressActions,
                       isBlocked: () => _openPlayerMenuCount > 0,
+                      preHandler: _handleTVKeyEvent,
                     ),
                     Center(
                       key: _videoSurfaceKey,
@@ -1548,6 +1709,10 @@ class _PlayerItemState extends State<PlayerItem>
                             panelVisibilityController:
                                 _panelVisibilityController,
                             keyboardFocus: widget.keyboardFocus,
+                            playPauseFocusNode: _tvPlayPauseFocus,
+                            progressFocusNode:
+                                isTV() ? _tvProgressFocus : null,
+                            onProgressKeyEvent: _handleTVProgressKey,
                             acquirePlayerPanelHold: acquirePlayerPanelHold,
                             onMenuVisibilityChanged:
                                 _handlePlayerMenuVisibilityChanged,

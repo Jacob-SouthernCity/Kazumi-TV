@@ -31,4 +31,16 @@ class PlatformEnvironmentService {
       return 0;
     }
   }
+
+  static Future<bool> isTelevision() async {
+    if (!Platform.isAndroid) {
+      return false;
+    }
+    try {
+      return await _intentChannel.invokeMethod<bool>('isTelevision') ?? false;
+    } on PlatformException catch (e) {
+      KazumiLogger().e("Failed to check TV device: '${e.message}'.");
+      return false;
+    }
+  }
 }

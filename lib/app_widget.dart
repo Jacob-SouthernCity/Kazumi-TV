@@ -12,6 +12,9 @@ import 'package:window_manager/window_manager.dart';
 import 'package:kazumi/bean/dialog/dialog_helper.dart';
 import 'package:kazumi/bean/dialog/exit_confirmation_dialog.dart';
 import 'package:kazumi/bean/settings/theme_provider.dart';
+import 'package:kazumi/bean/widget/tv_focus_highlight.dart';
+import 'package:kazumi/bean/widget/tv_keyboard_guard.dart';
+import 'package:kazumi/bean/widget/tv_remote_navigation.dart';
 import 'package:kazumi/navigation.dart';
 import 'package:kazumi/utils/constants.dart';
 import 'package:kazumi/utils/device.dart';
@@ -315,6 +318,14 @@ class _AppWidgetState extends State<AppWidget>
           themeMode: themeProvider.themeMode,
           scaffoldMessengerKey: rootScaffoldMessengerKey,
           routerConfig: ModularApp.routerConfigOf(context),
+          actions: isTV() ? TVDirectionalFocusAction.appActions : null,
+          builder: isTV()
+              ? (context, child) => TVRemoteNavigation(
+                    child: TVKeyboardGuard(
+                      child: TVFocusHighlight(child: child!),
+                    ),
+                  )
+              : null,
         );
       },
     );

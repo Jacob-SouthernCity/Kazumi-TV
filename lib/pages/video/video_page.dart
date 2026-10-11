@@ -63,8 +63,11 @@ class _VideoPageState extends State<VideoPage>
   bool showDebugLog = false;
   List<String> webviewLogLines = [];
   StreamSubscription<String>? _logSubscription;
-  final FocusNode keyboardFocus =
-      FocusNode(debugLabel: 'Video player shortcut scope');
+  // On TV the full-screen node would otherwise be a D-pad target itself.
+  final FocusNode keyboardFocus = FocusNode(
+    debugLabel: 'Video player shortcut scope',
+    skipTraversal: isTV(),
+  );
 
   final _episodePanelKey = GlobalKey<EpisodeSelectionPanelState>();
   final _sidePanelKey = GlobalKey<VideoSidePanelState>();

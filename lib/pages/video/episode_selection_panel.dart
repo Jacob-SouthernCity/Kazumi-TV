@@ -7,6 +7,7 @@ import 'package:scrollview_observer/scrollview_observer.dart';
 import 'package:kazumi/bean/widget/empty_state_widget.dart';
 import 'package:kazumi/modules/download/download_module.dart';
 import 'package:kazumi/modules/roads/road_module.dart';
+import 'package:kazumi/utils/device.dart';
 
 class EpisodeSelectionPanel extends StatefulWidget {
   const EpisodeSelectionPanel({
@@ -346,6 +347,7 @@ class _RoadSelectorState extends State<_RoadSelector> {
         inMutuallyExclusiveGroup: true,
         child: MenuItemButton(
           key: ValueKey('road-option-$index'),
+          autofocus: isTV() && selected,
           onPressed: () => widget.onChanged(index),
           style: ButtonStyle(
             minimumSize: WidgetStatePropertyAll(Size(width, 56)),

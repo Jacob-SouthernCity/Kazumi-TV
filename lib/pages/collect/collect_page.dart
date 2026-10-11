@@ -125,8 +125,10 @@ class _CollectPageState extends State<CollectPage> with KazumiDialogOwner {
               message: '同步收藏',
               child: StateActionButton.tonal(
                 text: '同步',
-                onPressed:
-                    _syncDialogOpen || _pendingIds.isNotEmpty ? null : _sync,
+                // Stays enabled while the dialog is open: disabling the focused
+                // button would move focus back to this page, behind the
+                // dialog. _sync ignores presses while the dialog runs.
+                onPressed: _pendingIds.isNotEmpty ? null : _sync,
                 icon: Icons.sync_rounded,
               ),
             ),

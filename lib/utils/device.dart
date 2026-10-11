@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:kazumi/services/platform/platform_environment_service.dart';
 
 Future<bool> isLowResolution() async {
   if (Platform.isMacOS) {
@@ -26,3 +27,11 @@ Future<Map<String, double>> getScreenInfo() async {
 bool isDesktop() {
   return Platform.isWindows || Platform.isMacOS || Platform.isLinux;
 }
+
+bool _isTV = false;
+
+Future<void> initTVDetection() async {
+  _isTV = await PlatformEnvironmentService.isTelevision();
+}
+
+bool isTV() => _isTV;

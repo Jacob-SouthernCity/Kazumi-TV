@@ -112,7 +112,7 @@ class _SearchFilterSheetState extends State<_SearchFilterSheet> {
       0,
       10,
     );
-    return RangeSlider(
+    return TVRangeSlider(
       values: values,
       min: 0,
       max: 10,
@@ -141,7 +141,7 @@ class _SearchFilterSheetState extends State<_SearchFilterSheet> {
       1,
       10000,
     );
-    return RangeSlider(
+    return TVRangeSlider(
       values: values,
       min: 1,
       max: 10000,

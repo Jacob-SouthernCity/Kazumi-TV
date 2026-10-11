@@ -241,9 +241,12 @@ class _PlayerAdjustmentHudState extends State<PlayerAdjustmentHud> {
                               : const Duration(milliseconds: 180),
                           curve: Curves.easeOutCubic,
                           builder: (context, animatedProgress, child) {
-                            return Slider(
-                              value: animatedProgress,
-                              onChanged: (_) {},
+                            // Display only: a hidden HUD must not take focus.
+                            return ExcludeFocus(
+                              child: Slider(
+                                value: animatedProgress,
+                                onChanged: (_) {},
+                              ),
                             );
                           },
                         ),

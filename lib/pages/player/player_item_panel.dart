@@ -48,6 +48,9 @@ class PlayerItemPanel extends StatefulWidget {
     required this.panelVisibilityController,
     this.onToggleSidePanel,
     required this.keyboardFocus,
+    this.playPauseFocusNode,
+    this.progressFocusNode,
+    this.onProgressKeyEvent,
     required this.acquirePlayerPanelHold,
     required this.onMenuVisibilityChanged,
     required this.handleDanmaku,
@@ -75,6 +78,11 @@ class PlayerItemPanel extends StatefulWidget {
       handleSuperResolutionChange;
   final AnimationController panelVisibilityController;
   final FocusNode keyboardFocus;
+  final FocusNode? playPauseFocusNode;
+
+  /// Makes the progress bar a focus stop, for remote controls.
+  final FocusNode? progressFocusNode;
+  final FocusOnKeyEventCallback? onProgressKeyEvent;
   final PlayerPanelHold Function() acquirePlayerPanelHold;
   final ValueChanged<bool> onMenuVisibilityChanged;
   final VoidCallback handleDanmaku;
@@ -691,6 +699,7 @@ class _PlayerItemPanelState extends State<PlayerItemPanel> {
               desktop: _desktop,
             ),
             playPause: IconButton(
+              focusNode: widget.playPauseFocusNode,
               tooltip: playerController.playback.playing ? '暂停' : '播放',
               onPressed: () => playerController.playOrPause(),
               icon: PlayPauseIcon(
@@ -705,7 +714,7 @@ class _PlayerItemPanelState extends State<PlayerItemPanel> {
               onPressed: widget.onNextEpisode,
             ),
             // Playback ticks only rebuild the progress bar and its time labels.
-            progressBuilder: (location) => Observer(
+            progressBuilder: (location) => _focusableProgress(Observer(
                 builder: (context) => ProgressBar(
                       thumbRadius: 8,
                       thumbGlowRadius: 18,
@@ -722,7 +731,7 @@ class _PlayerItemPanelState extends State<PlayerItemPanel> {
                       onDragStart: (_) => widget.handleProgressBarDragStart(),
                       onDragUpdate: (details) => playerController.seeking
                           .updateInteractiveSeek(details.timeStamp),
-                    )),
+                    ))),
             timeLabel: Observer(
                 builder: (context) => Text(
                       '${compact ? '    ' : ''}${durationToString(playerController.playback.currentPosition)} / ${durationToString(playerController.playback.duration)}',
@@ -737,6 +746,18 @@ class _PlayerItemPanelState extends State<PlayerItemPanel> {
           ),
         ),
       );
+
+  Widget _focusableProgress(Widget progress) {
+    final focusNode = widget.progressFocusNode;
+    if (focusNode == null) {
+      return progress;
+    }
+    return Focus(
+      focusNode: focusNode,
+      onKeyEvent: widget.onProgressKeyEvent,
+      child: progress,
+    );
+  }
 
   Widget _buildFullscreenButton(bool compact) {
     if (videoPageController.isPip) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:kazumi/utils/device.dart';
 
 typedef KazumiMenuBuilder =
     Widget Function(BuildContext context, VoidCallback? toggle);
@@ -36,6 +37,27 @@ class KazumiMenuButton extends StatelessWidget {
   final VoidCallback? onClose;
   final MenuStyle? style;
 
+  /// Opening a menu leaves focus on its anchor, so on TV one top level item
+  /// takes focus: the selected one, or else the first enabled item. Items in
+  /// submenus are left alone, or focusing a submenu button would pull focus
+  /// into its submenu.
+  List<Widget> get _menuChildrenWithFocus {
+    if (!isTV()) {
+      return menuChildren;
+    }
+    var index = menuChildren.indexWhere(
+        (c) => c is KazumiMenuItem && c.selected == true && c.onPressed != null);
+    if (index < 0) {
+      index = menuChildren
+          .indexWhere((c) => c is KazumiMenuItem && c.onPressed != null);
+    }
+    if (index < 0) {
+      return menuChildren;
+    }
+    return [...menuChildren]
+      ..[index] = (menuChildren[index] as KazumiMenuItem).withAutofocus();
+  }
+
   @override
   Widget build(BuildContext context) {
     return MenuButtonTheme(
@@ -51,7 +73,7 @@ class KazumiMenuButton extends StatelessWidget {
         onOpen: onOpen,
         onClose: onClose,
         style: style,
-        menuChildren: menuChildren,
+        menuChildren: _menuChildrenWithFocus,
         builder: (context, controller, _) => builder(
           context,
           enabled && menuChildren.isNotEmpty
@@ -72,6 +94,7 @@ class KazumiMenuItem extends StatelessWidget {
     this.selected,
     this.destructive = false,
     this.requestFocusOnHover = true,
+    this.autofocus = false,
   });
 
   final String label;
@@ -82,6 +105,18 @@ class KazumiMenuItem extends StatelessWidget {
   final bool? selected;
   final bool destructive;
   final bool requestFocusOnHover;
+  final bool autofocus;
+
+  KazumiMenuItem withAutofocus() => KazumiMenuItem(
+        key: key,
+        label: label,
+        onPressed: onPressed,
+        leadingIcon: leadingIcon,
+        selected: selected,
+        destructive: destructive,
+        requestFocusOnHover: requestFocusOnHover,
+        autofocus: true,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -99,6 +134,7 @@ class KazumiMenuItem extends StatelessWidget {
     return MenuItemButton(
       onPressed: onPressed,
       requestFocusOnHover: requestFocusOnHover,
+      autofocus: autofocus,
       style: ButtonStyle(
         foregroundColor: foregroundColor,
         iconColor: foregroundColor,

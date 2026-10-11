@@ -37,6 +37,7 @@ void main() async {
   }
 
   if (Platform.isAndroid) {
+    await initTVDetection();
     await WebViewFeatureService.initialize();
   }
 

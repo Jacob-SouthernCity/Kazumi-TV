@@ -5,8 +5,10 @@ import 'package:kazumi/bean/appbar/sys_app_bar.dart';
 import 'package:kazumi/bean/settings/settings_detail_scaffold.dart';
 import 'package:kazumi/bean/settings/settings_list.dart';
 import 'package:kazumi/bean/widget/content_section.dart';
+import 'package:kazumi/bean/widget/tv_focus_escape.dart';
 import 'package:kazumi/pages/settings/player_settings.dart';
 import 'package:kazumi/utils/constants.dart';
+import 'package:kazumi/utils/device.dart';
 
 class _SettingsCategory {
   const _SettingsCategory({
@@ -172,6 +174,11 @@ class _SettingsPageState extends State<SettingsPage> {
   bool get _isSecondaryRoute =>
       _location != '/settings' && _location != _selectedCategoryPath;
 
+  Widget _buildOutlet() {
+    final Widget outlet = RouterOutlet(key: _outletKey);
+    return isTV() ? TVFocusEscape(child: outlet) : outlet;
+  }
+
   @override
   void didUpdateWidget(covariant SettingsPage oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -262,7 +269,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         data: Theme.of(context).copyWith(
                           pageTransitionsTheme: settingsPageTransitionsTheme,
                         ),
-                        child: RouterOutlet(key: _outletKey),
+                        child: _buildOutlet(),
                       ),
                     ),
                   ),

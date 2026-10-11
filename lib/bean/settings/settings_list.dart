@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'package:kazumi/bean/widget/content_section.dart';
 import 'package:kazumi/bean/widget/split_list_row.dart';
+import 'package:kazumi/bean/widget/tv_directional_navigation.dart';
+import 'package:kazumi/utils/device.dart';
 
 enum _TileKind { plain, toggle, radio }
 
@@ -281,14 +283,16 @@ class SettingsSliderTile extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          Slider(
-            value: value,
-            min: min,
-            max: max,
-            divisions: divisions,
-            showValueIndicator: ShowValueIndicator.never,
-            padding: EdgeInsets.zero,
-            onChanged: onChanged,
+          TVDirectionalNavigation(
+            child: Slider(
+              value: value,
+              min: min,
+              max: max,
+              divisions: divisions,
+              showValueIndicator: ShowValueIndicator.never,
+              padding: EdgeInsets.zero,
+              onChanged: onChanged,
+            ),
           ),
         ],
       ),
@@ -408,14 +412,21 @@ class SettingsTile<T> extends StatelessWidget {
               ],
               if (_kind == _TileKind.toggle) ...[
                 const SizedBox(width: 12),
-                Switch(
-                  value: initialValue ?? false,
-                  onChanged: enabled ? onToggle : null,
+                // On TV the row is the single focus stop and already toggles.
+                ExcludeFocus(
+                  excluding: isTV(),
+                  child: Switch(
+                    value: initialValue ?? false,
+                    onChanged: enabled ? onToggle : null,
+                  ),
                 ),
               ],
               if (_kind == _TileKind.radio) ...[
                 const SizedBox(width: 12),
-                Radio<T>(value: radioValue as T, enabled: enabled),
+                ExcludeFocus(
+                  excluding: isTV(),
+                  child: Radio<T>(value: radioValue as T, enabled: enabled),
+                ),
               ],
             ],
           ),
