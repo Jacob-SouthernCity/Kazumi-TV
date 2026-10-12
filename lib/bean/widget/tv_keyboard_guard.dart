@@ -6,10 +6,15 @@ import 'package:kazumi/utils/tv_focus.dart';
 /// Keeps the on-screen keyboard closed while the D-pad passes over a text
 /// field.
 ///
-/// A focused text field only opens the keyboard after Select; until then the
-/// arrow keys keep moving focus. Touch or mouse input opens it directly, as
-/// on phones. When the keyboard closes, the text field calls `unfocus()`, so
-/// focus is handed back to that field instead of falling to the route scope.
+/// While the user is not typing, a [_KeyboardGate] is the current text input
+/// control, so a focused text field attaches to the platform with
+/// [TextInputType.none] and no keyboard appears, not even for a frame.
+/// Select on the text field, or a tap, restores the platform control and
+/// opens the keyboard. Leaving the field or closing the keyboard installs the
+/// gate again.
+///
+/// When the keyboard closes the text field calls `unfocus()`, so focus is
+/// handed back to that field instead of falling to the route scope.
 class TVKeyboardGuard extends StatefulWidget {
   const TVKeyboardGuard({super.key, required this.child});
 
@@ -23,17 +28,34 @@ class TVKeyboardGuard extends StatefulWidget {
   State<TVKeyboardGuard> createState() => _TVKeyboardGuardState();
 }
 
+/// A text input control without any UI. While it is current, the platform
+/// control is attached with [TextInputType.none], which shows no keyboard.
+class _KeyboardGate with TextInputControl {
+  /// Whether a text field attached while the gate was current.
+  bool attached = false;
+
+  @override
+  void attach(TextInputClient client, TextInputConfiguration configuration) {
+    attached = true;
+  }
+
+  @override
+  void detach(TextInputClient client) {
+    attached = false;
+  }
+}
+
 class _TVKeyboardGuardState extends State<TVKeyboardGuard>
     with WidgetsBindingObserver {
-  static const Duration _pointerFocusWindow = Duration(milliseconds: 500);
-
+  final _KeyboardGate _gate = _KeyboardGate();
   FocusNode? _lastPrimary;
+  FocusNode? _reattaching;
   bool _keyboardVisible = false;
-  DateTime? _lastPointerDown;
 
   @override
   void initState() {
     super.initState();
+    TextInput.setInputControl(_gate);
     WidgetsBinding.instance.addObserver(this);
     FocusManager.instance.addListener(_onFocusChanged);
     FocusManager.instance.addEarlyKeyEventHandler(_onKeyEvent);
@@ -42,6 +64,7 @@ class _TVKeyboardGuardState extends State<TVKeyboardGuard>
 
   @override
   void dispose() {
+    TextInput.restorePlatformInputControl();
     WidgetsBinding.instance.removeObserver(this);
     FocusManager.instance.removeListener(_onFocusChanged);
     FocusManager.instance.removeEarlyKeyEventHandler(_onKeyEvent);
@@ -49,9 +72,48 @@ class _TVKeyboardGuardState extends State<TVKeyboardGuard>
     super.dispose();
   }
 
+  void _allowKeyboard() {
+    if (TVKeyboardGuard._isEditing) {
+      return;
+    }
+    TVKeyboardGuard._isEditing = true;
+    // Read before restoring: the gate receives no detach once it is removed.
+    final attachedToGate = _gate.attached;
+    _gate.attached = false;
+    TextInput.restorePlatformInputControl();
+    final primary = FocusManager.instance.primaryFocus;
+    if (attachedToGate && primary != null && _isTextField(primary)) {
+      _reattach(primary);
+    }
+  }
+
+  /// The platform applies the keyboard type only when a text field attaches,
+  /// so a field that attached with [TextInputType.none] reconnects by losing
+  /// and regaining focus, and its keyboard opens.
+  void _reattach(FocusNode field) {
+    _reattaching = field;
+    field.unfocus();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _reattaching = null;
+      if (field.context != null && field.canRequestFocus) {
+        field.requestFocus();
+      }
+    });
+  }
+
+  void _blockKeyboard() {
+    if (!TVKeyboardGuard._isEditing) {
+      return;
+    }
+    TVKeyboardGuard._isEditing = false;
+    // Hides an open keyboard; later text fields attach without one.
+    TextInput.setInputControl(_gate);
+  }
+
+  // Touch and mouse open the keyboard directly, as on phones.
   void _onPointerEvent(PointerEvent event) {
     if (event is PointerDownEvent) {
-      _lastPointerDown = DateTime.now();
+      _allowKeyboard();
     }
   }
 
@@ -63,7 +125,7 @@ class _TVKeyboardGuardState extends State<TVKeyboardGuard>
     }
     final visible = views.first.viewInsets.bottom > 0;
     if (_keyboardVisible && !visible) {
-      TVKeyboardGuard._isEditing = false;
+      _blockKeyboard();
     }
     _keyboardVisible = visible;
   }
@@ -77,58 +139,42 @@ class _TVKeyboardGuardState extends State<TVKeyboardGuard>
     final primary = FocusManager.instance.primaryFocus;
     final previous = _lastPrimary;
     _lastPrimary = primary;
-    if (primary == previous) {
+    if (primary == previous || _reattaching != null) {
       return;
     }
 
     if (primary is FocusScopeNode && _isTextField(previous)) {
       final previousContext = previous!.context!;
       if (previous.canRequestFocus && isOnVisibleRoute(previousContext)) {
-        TVKeyboardGuard._isEditing = false;
+        _blockKeyboard();
         previous.requestFocus();
         return;
       }
     }
 
     if (!_isTextField(primary)) {
-      TVKeyboardGuard._isEditing = false;
-      return;
-    }
-    final pointerDown = _lastPointerDown;
-    if (pointerDown != null &&
-        DateTime.now().difference(pointerDown) < _pointerFocusWindow) {
-      TVKeyboardGuard._isEditing = true;
-    }
-    if (!TVKeyboardGuard._isEditing) {
-      // The text field shows the keyboard while handling the same focus
-      // change, so hiding has to wait until after it.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!TVKeyboardGuard._isEditing &&
-            _isTextField(FocusManager.instance.primaryFocus)) {
-          SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
-        }
-      });
+      _blockKeyboard();
     }
   }
 
   KeyEventResult _onKeyEvent(KeyEvent event) {
     final primary = FocusManager.instance.primaryFocus;
+    // The TV keyboard takes the D-pad while it is open, so a remote key
+    // press reaching the app means it closed or was never opened. Key ups
+    // are skipped: the release of the Select that opened it arrives later.
+    final remotePress =
+        event is! KeyUpEvent &&
+        (tvArrowDirections.containsKey(event.logicalKey) ||
+            tvSelectKeys.contains(event.logicalKey));
+    if (remotePress && TVKeyboardGuard._isEditing) {
+      _blockKeyboard();
+    }
     if (!_isTextField(primary)) {
-      return KeyEventResult.ignored;
-    }
-    // The TV keyboard floats without changing the view insets and takes the
-    // D-pad while it is open, so an arrow reaching the app means it closed.
-    if (TVKeyboardGuard._isEditing &&
-        tvArrowDirections.containsKey(event.logicalKey)) {
-      TVKeyboardGuard._isEditing = false;
-    }
-    if (TVKeyboardGuard._isEditing) {
       return KeyEventResult.ignored;
     }
     if (tvSelectKeys.contains(event.logicalKey)) {
       if (event is KeyDownEvent) {
-        TVKeyboardGuard._isEditing = true;
-        SystemChannels.textInput.invokeMethod<void>('TextInput.show');
+        _allowKeyboard();
       }
       return KeyEventResult.handled;
     }

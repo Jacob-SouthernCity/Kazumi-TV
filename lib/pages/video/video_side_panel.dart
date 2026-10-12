@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:kazumi/bean/widget/side_panel_transition.dart';
+import 'package:kazumi/utils/device.dart';
 
 class VideoSidePanel extends StatefulWidget {
   const VideoSidePanel({
@@ -32,6 +33,9 @@ class VideoSidePanelState extends State<VideoSidePanel>
   late final Animation<double> _opacity =
       _animation.drive(CurveTween(curve: Curves.easeIn));
 
+  // Lets the system Back close the open panel instead of leaving the page.
+  LocalHistoryEntry? _historyEntry;
+
   bool get _isOpening =>
       _animation.status == AnimationStatus.forward ||
       _animation.status == AnimationStatus.completed;
@@ -45,11 +49,22 @@ class VideoSidePanelState extends State<VideoSidePanel>
       } else {
         _animation.forward();
       }
+      _addHistoryEntry();
       widget.onOpened?.call();
     }
   }
 
   void close() {
+    final entry = _historyEntry;
+    if (entry != null) {
+      // Hides the panel through onRemove.
+      entry.remove();
+    } else {
+      _hide();
+    }
+  }
+
+  void _hide() {
     if (widget.disableAnimations) {
       _animation.value = 0;
     } else {
@@ -58,15 +73,43 @@ class VideoSidePanelState extends State<VideoSidePanel>
     widget.onClosed?.call();
   }
 
+  void _addHistoryEntry() {
+    if (_historyEntry != null) return;
+    final entry = LocalHistoryEntry(
+      impliesAppBarDismissal: false,
+      onRemove: () {
+        if (_historyEntry == null) return;
+        _historyEntry = null;
+        _hide();
+      },
+    );
+    _historyEntry = entry;
+    ModalRoute.of(context)?.addLocalHistoryEntry(entry);
+  }
+
+  void _dropHistoryEntry() {
+    final entry = _historyEntry;
+    _historyEntry = null;
+    entry?.remove();
+  }
+
   @override
   void didUpdateWidget(VideoSidePanel oldWidget) {
     super.didUpdateWidget(oldWidget);
     // Reset before rendering the new mode to avoid a sidebar flash.
-    if (oldWidget.fullscreen != widget.fullscreen) _animation.value = 0;
+    if (oldWidget.fullscreen != widget.fullscreen) {
+      final wasOpen = !_animation.isDismissed;
+      _dropHistoryEntry();
+      _animation.value = 0;
+      // Focus may be inside the removed panel content.
+      if (wasOpen) widget.onClosed?.call();
+    }
   }
 
   @override
   void dispose() {
+    // Cleared first, so onRemove does not animate a disposed panel.
+    _dropHistoryEntry();
     _animation.dispose();
     super.dispose();
   }
@@ -121,7 +164,13 @@ class VideoSidePanelState extends State<VideoSidePanel>
                 context: context,
                 removeTop: true,
                 removeLeft: true,
-                child: SafeArea(child: widget.child),
+                // A fresh scope per opening lets the panel content autofocus,
+                // so the remote starts inside the panel.
+                child: SafeArea(
+                  child: isTV()
+                      ? FocusScope(child: widget.child)
+                      : widget.child,
+                ),
               ),
             ),
           ),

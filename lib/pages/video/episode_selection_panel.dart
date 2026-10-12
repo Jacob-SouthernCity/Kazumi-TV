@@ -634,6 +634,7 @@ class _EpisodeRowState extends State<_EpisodeRow>
             );
           },
           child: InkWell(
+            autofocus: isTV() && widget.selected,
             onTap: widget.onTap,
             onHighlightChanged: _setPressed,
             excludeFromSemantics: true,

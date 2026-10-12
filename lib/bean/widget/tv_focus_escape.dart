@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:kazumi/bean/widget/tv_keyboard_guard.dart';
+import 'package:kazumi/bean/widget/tv_slider.dart';
 import 'package:kazumi/utils/tv_focus.dart';
 
 /// Lets D-pad focus leave [child] when it reaches the edge of [child].
@@ -56,7 +57,7 @@ class _TVFocusEscapeState extends State<TVFocusEscape> {
         primaryContext == null ||
         !_isInnermostBoundaryOf(primary) ||
         (TVKeyboardGuard.isEditing && isInEditableText(primaryContext)) ||
-        (_isHorizontal(direction) && _isInSlider(primaryContext))) {
+        (_isHorizontal(direction) && TVAdjustable.isAdjusting(primary))) {
       return KeyEventResult.ignored;
     }
     final scope = primary.nearestScope;
@@ -83,10 +84,6 @@ class _TVFocusEscapeState extends State<TVFocusEscape> {
   static bool _isHorizontal(TraversalDirection direction) =>
       direction == TraversalDirection.left ||
       direction == TraversalDirection.right;
-
-  static bool _isInSlider(BuildContext context) =>
-      context.findAncestorWidgetOfExactType<Slider>() != null ||
-      context.findAncestorWidgetOfExactType<RangeSlider>() != null;
 
   /// Mirrors the directional policy's candidate filter, which compares
   /// candidate centers with the current node's edges.
@@ -134,20 +131,22 @@ class _TVFocusEscapeState extends State<TVFocusEscape> {
       final double gap;
       final double offAxis;
       if (_isHorizontal(direction)) {
-        gap = (direction == TraversalDirection.left
-                ? from.left - rect.right
-                : rect.left - from.right)
-            .abs();
+        gap =
+            (direction == TraversalDirection.left
+                    ? from.left - rect.right
+                    : rect.left - from.right)
+                .abs();
         offAxis = (rect.center.dy - from.center.dy).abs();
       } else {
         // Up and down stay in the same column instead of jumping sideways.
         if (rect.right <= from.left || rect.left >= from.right) {
           continue;
         }
-        gap = (direction == TraversalDirection.up
-                ? from.top - rect.bottom
-                : rect.top - from.bottom)
-            .abs();
+        gap =
+            (direction == TraversalDirection.up
+                    ? from.top - rect.bottom
+                    : rect.top - from.bottom)
+                .abs();
         offAxis = (rect.center.dx - from.center.dx).abs();
       }
       final score = gap + offAxis * 2;
@@ -160,8 +159,6 @@ class _TVFocusEscapeState extends State<TVFocusEscape> {
   }
 
   @override
-  Widget build(BuildContext context) => Focus(
-        focusNode: _boundary,
-        child: widget.child,
-      );
+  Widget build(BuildContext context) =>
+      Focus(focusNode: _boundary, child: widget.child);
 }

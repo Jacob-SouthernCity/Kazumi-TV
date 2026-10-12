@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:kazumi/bean/dialog/material_bottom_sheet.dart';
 import 'package:kazumi/bean/widget/tonal_card.dart';
-import 'package:kazumi/bean/widget/tv_directional_navigation.dart';
+import 'package:kazumi/bean/widget/tv_slider.dart';
 import 'package:kazumi/services/storage/storage.dart';
 
 const double _minDanmakuTimeOffset = -180;
@@ -124,8 +124,8 @@ class _DanmakuTimeOffsetSheetState extends State<DanmakuTimeOffsetSheet> {
                     ),
                   ]),
                   const SizedBox(height: 16),
-                  TVDirectionalNavigation(
-                    child: Slider(
+                  TVSlider(
+                    slider: Slider(
                       value: _offset,
                       min: _minDanmakuTimeOffset,
                       max: _maxDanmakuTimeOffset,

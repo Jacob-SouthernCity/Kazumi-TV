@@ -92,8 +92,10 @@ class _TVFocusHighlightState extends State<TVFocusHighlight>
         size.height >= overlaySize.height * 0.9) {
       return null;
     }
-    final topLeft =
-        renderObject.localToGlobal(Offset.zero, ancestor: overlayBox);
+    final topLeft = renderObject.localToGlobal(
+      Offset.zero,
+      ancestor: overlayBox,
+    );
     return topLeft & size;
   }
 

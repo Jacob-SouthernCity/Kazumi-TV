@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:kazumi/bean/widget/content_section.dart';
 import 'package:kazumi/bean/widget/split_list_row.dart';
-import 'package:kazumi/bean/widget/tv_directional_navigation.dart';
+import 'package:kazumi/bean/widget/tv_slider.dart';
 import 'package:kazumi/utils/device.dart';
 
 enum _TileKind { plain, toggle, radio }
@@ -283,8 +283,8 @@ class SettingsSliderTile extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          TVDirectionalNavigation(
-            child: Slider(
+          TVSlider(
+            slider: Slider(
               value: value,
               min: min,
               max: max,

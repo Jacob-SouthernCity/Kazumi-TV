@@ -1044,6 +1044,11 @@ class _PlayerItemState extends State<PlayerItem>
   /// remote has been idle, so holding a key scrubs instead of seeking on
   /// every repeat.
   void _tvScrub(TraversalDirection direction) {
+    // Before the video loads a seek cannot finish, and its pending session
+    // would keep the controls from hiding.
+    if (playerController.playback.duration <= Duration.zero) {
+      return;
+    }
     final step = Duration(seconds: playerController.playback.arrowKeySkipTime);
     final forward = direction == TraversalDirection.right;
     final target =

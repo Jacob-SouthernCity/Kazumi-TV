@@ -17,9 +17,9 @@ typedef TVBackHandler = bool Function();
 /// such as the player, sliders and text fields.
 class TVDirectionalFocusAction extends DirectionalFocusAction {
   static Map<Type, Action<Intent>> get appActions => {
-        ...WidgetsApp.defaultActions,
-        DirectionalFocusIntent: TVDirectionalFocusAction(),
-      };
+    ...WidgetsApp.defaultActions,
+    DirectionalFocusIntent: TVDirectionalFocusAction(),
+  };
 
   @override
   void invoke(DirectionalFocusIntent intent) {
@@ -50,7 +50,8 @@ class TVDirectionalFocusAction extends DirectionalFocusAction {
         continue;
       }
       final rect = node.rect;
-      final inner = node.ancestors.contains(outer) ||
+      final inner =
+          node.ancestors.contains(outer) ||
           (outerRect.contains(rect.center) && !outer.ancestors.contains(node));
       if (!inner) {
         continue;
@@ -141,8 +142,7 @@ class _TVRemoteNavigationState extends State<TVRemoteNavigation>
   bool _closeFocusedSubmenu() {
     final primaryContext = FocusManager.instance.primaryFocus?.context;
     if (primaryContext == null ||
-        primaryContext.findAncestorWidgetOfExactType<SubmenuButton>() ==
-            null ||
+        primaryContext.findAncestorWidgetOfExactType<SubmenuButton>() == null ||
         !(MenuController.maybeOf(primaryContext)?.isOpen ?? false)) {
       return false;
     }
