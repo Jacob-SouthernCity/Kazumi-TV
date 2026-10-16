@@ -26,6 +26,15 @@ class BangumiAccelerationInterceptor extends Interceptor {
           options.queryParameters = {};
           options.extra[_echRequestKey] = true;
         case BangumiAcceleration.mirror:
+          // Without the credentials the mirror rejects these requests, so
+          // they go to Bangumi directly.
+          if (!BangumiAcceleration.canSignMirrorRequests &&
+              BangumiAcceleration.mirrorRequiresSignature(
+                uri,
+                options.method,
+              )) {
+            break;
+          }
           options.path =
               ApiEndpoints.bangumiMirrorDomain +
               uri.path +

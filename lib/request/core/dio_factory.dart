@@ -101,10 +101,13 @@ class DioFactory {
 }
 
 class _RulesMirrorInterceptor extends Interceptor {
+  static const _originalUrlKey = 'rulesMirrorOriginalUrl';
+  static const _bypassMirrorKey = 'rulesMirrorBypass';
+
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
     final enableGitProxy = GStorage.getSetting(SettingsKeys.enableGitProxy);
-    if (!enableGitProxy) {
+    if (!enableGitProxy || options.extra[_bypassMirrorKey] == true) {
       handler.next(options);
       return;
     }
@@ -119,7 +122,34 @@ class _RulesMirrorInterceptor extends Interceptor {
         ApiEndpoints.pluginShopMirror +
         url.substring(ApiEndpoints.pluginShop.length);
     KazumiLogger().d('Rules mirror: $mirrored');
+    options.extra[_originalUrlKey] = url;
     options.path = mirrored;
     handler.next(options);
+  }
+
+  /// The mirror can be unreachable or block clients outside mainland China,
+  /// so a failed mirror request is retried once against GitHub.
+  @override
+  Future<void> onError(
+    DioException err,
+    ErrorInterceptorHandler handler,
+  ) async {
+    final originalUrl = err.requestOptions.extra[_originalUrlKey];
+    if (originalUrl is! String || err.type == DioExceptionType.cancel) {
+      handler.next(err);
+      return;
+    }
+    KazumiLogger().w('Rules mirror failed, retrying GitHub: $originalUrl');
+    final retry = err.requestOptions.copyWith(
+      path: originalUrl,
+      queryParameters: const {},
+      extra: {...err.requestOptions.extra, _bypassMirrorKey: true}
+        ..remove(_originalUrlKey),
+    );
+    try {
+      handler.resolve(await DioFactory.rulesRepoDio.fetch(retry));
+    } on DioException catch (e) {
+      handler.next(e);
+    }
   }
 }

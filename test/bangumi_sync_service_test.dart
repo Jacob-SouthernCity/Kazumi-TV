@@ -103,6 +103,16 @@ void main() {
     }
   });
 
+  test('mirror requests that need a signature go direct without credentials',
+      () async {
+    await GStorage.putSetting(SettingsKeys.enableBangumiProxy, true);
+    const url = 'https://next.bgm.tv/p1/episodes/1/comments';
+    await BangumiClient.instance.get(url);
+    final request = adapter.requests.last;
+    expect(request.uri, Uri.parse(url));
+    expect(request.headers.containsKey('X-Signature'), isFalse);
+  });
+
   test('failed draft validation preserves credentials and connected account',
       () async {
     await bangumi.ping();
