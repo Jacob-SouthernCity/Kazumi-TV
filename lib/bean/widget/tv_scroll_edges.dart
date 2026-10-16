@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 
 /// Reveals the start or end of a vertical list when focus nears it.
 ///
@@ -55,21 +54,24 @@ class _TVScrollEdgesState extends State<TVScrollEdges> {
     }
     // A horizontal row, such as a chip list, sits inside the page's list.
     final scrollable = Scrollable.maybeOf(nodeContext, axis: Axis.vertical);
-    final renderObject = nodeContext.findRenderObject();
+    final item = nodeContext.findRenderObject();
+    final view = scrollable?.context.findRenderObject();
     if (scrollable == null ||
-        renderObject == null ||
-        !renderObject.attached ||
+        item is! RenderBox ||
+        view is! RenderBox ||
+        !item.attached ||
+        !view.attached ||
         !scrollable.position.hasContentDimensions) {
       return;
     }
-    final viewport = _verticalViewportOf(renderObject);
-    if (viewport == null) {
-      return;
-    }
     final position = scrollable.position;
-    // Offsets at which the control sits at the bottom or top of the view.
-    final atBottom = viewport.getOffsetToReveal(renderObject, 1.0).offset;
-    final atTop = viewport.getOffsetToReveal(renderObject, 0.0).offset;
+    // Measured against the scroll view itself, which works for every kind
+    // of viewport, including nested horizontal ones.
+    final top = item.localToGlobal(Offset.zero, ancestor: view).dy;
+    final bottom = top + item.size.height;
+    // Offsets at which the control sits at the top or bottom of the view.
+    final atTop = position.pixels + top;
+    final atBottom = position.pixels + bottom - position.viewportDimension;
     final double target;
     if (atBottom <= position.minScrollExtent) {
       target = position.minScrollExtent;
@@ -81,21 +83,6 @@ class _TVScrollEdgesState extends State<TVScrollEdges> {
     if ((position.pixels - target).abs() > 0.5) {
       position.animateTo(target, duration: _duration, curve: Curves.easeOut);
     }
-  }
-
-  static RenderViewportBase? _verticalViewportOf(RenderObject object) {
-    RenderObject? current = object;
-    while (current != null) {
-      final viewport = RenderAbstractViewport.maybeOf(current);
-      if (viewport is! RenderViewportBase) {
-        return null;
-      }
-      if (viewport.axis == Axis.vertical) {
-        return viewport;
-      }
-      current = viewport.parent;
-    }
-    return null;
   }
 
   @override
