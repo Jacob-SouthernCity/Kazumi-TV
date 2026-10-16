@@ -5,6 +5,7 @@ import 'package:kazumi/bean/card/user_comments_card.dart';
 import 'package:kazumi/bean/widget/error_widget.dart';
 import 'package:kazumi/bean/widget/empty_state_widget.dart';
 import 'package:kazumi/bean/widget/loading_indicator.dart';
+import 'package:kazumi/bean/widget/tv_selection_area.dart';
 import 'package:kazumi/modules/bangumi/episode_item.dart';
 import 'package:kazumi/modules/comments/comment_item.dart';
 
@@ -120,7 +121,9 @@ class EpisodeCommentsView extends StatelessWidget {
                       keepAlive: true,
                       child: IndexedSemantics(
                         index: index,
-                        child: UserCommentsCard.episode(comments[index]),
+                        child: TVFocusStop(
+                          child: UserCommentsCard.episode(comments[index]),
+                        ),
                       ),
                     ),
                     childCount: comments.length,

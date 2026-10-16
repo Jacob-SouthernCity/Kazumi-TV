@@ -15,6 +15,7 @@ import 'package:kazumi/bean/settings/theme_provider.dart';
 import 'package:kazumi/bean/widget/tv_focus_highlight.dart';
 import 'package:kazumi/bean/widget/tv_keyboard_guard.dart';
 import 'package:kazumi/bean/widget/tv_remote_navigation.dart';
+import 'package:kazumi/bean/widget/tv_scroll_edges.dart';
 import 'package:kazumi/navigation.dart';
 import 'package:kazumi/utils/constants.dart';
 import 'package:kazumi/utils/device.dart';
@@ -322,7 +323,9 @@ class _AppWidgetState extends State<AppWidget>
           builder: isTV()
               ? (context, child) => TVRemoteNavigation(
                     child: TVKeyboardGuard(
-                      child: TVFocusHighlight(child: child!),
+                      child: TVScrollEdges(
+                        child: TVFocusHighlight(child: child!),
+                      ),
                     ),
                   )
               : null,
