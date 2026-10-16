@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:kazumi/bean/widget/bangumi_avatar.dart';
+import 'package:kazumi/bean/widget/tv_selection_area.dart';
 import 'package:kazumi/modules/comments/comment_item.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:skeletonizer/skeletonizer.dart';
@@ -54,7 +55,7 @@ class CommentsCard extends StatelessWidget {
         ),
       );
     }
-    return SelectionArea(
+    return TVSelectionArea(
       child: Padding(
         padding: const EdgeInsets.all(8.0),
         child: Column(

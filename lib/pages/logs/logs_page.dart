@@ -10,6 +10,7 @@ import 'package:kazumi/bean/settings/settings_detail_scaffold.dart';
 import 'package:kazumi/bean/widget/empty_state_widget.dart';
 import 'package:kazumi/bean/widget/error_widget.dart';
 import 'package:kazumi/bean/widget/loading_indicator.dart';
+import 'package:kazumi/bean/widget/tv_selection_area.dart';
 
 class LogsPage extends StatefulWidget {
   const LogsPage({super.key});
@@ -190,7 +191,7 @@ class _LogsPageState extends State<LogsPage> {
       );
     }
 
-    return SelectionArea(
+    return TVSelectionArea(
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: SizedBox(
