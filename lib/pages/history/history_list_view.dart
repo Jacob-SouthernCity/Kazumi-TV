@@ -4,6 +4,7 @@ import 'package:kazumi/bean/widget/empty_state_widget.dart';
 import 'package:kazumi/bean/widget/state_presentation.dart';
 import 'package:kazumi/modules/history/history_module.dart';
 import 'package:kazumi/pages/history/history_list_query.dart';
+import 'package:kazumi/utils/device.dart';
 
 class HistoryListView extends StatefulWidget {
   const HistoryListView({
@@ -93,8 +94,11 @@ class _HistoryListViewState extends State<HistoryListView> {
           _searchFocus.unfocus();
         },
       },
+      // Holds focus only for the shortcuts; on TV a page-wide stop would sit
+      // between the controls the D-pad moves across.
       child: Focus(
         autofocus: true,
+        skipTraversal: isTV(),
         child: LayoutBuilder(builder: (context, constraints) {
           final contentWidth = constraints.maxWidth.clamp(0.0, 960.0);
           // Preserve full-width scrolling while centering the content.

@@ -8,6 +8,7 @@ import 'package:kazumi/modules/collect/collect_layout.dart';
 import 'package:kazumi/modules/collect/collect_module.dart';
 import 'package:kazumi/modules/collect/collect_type.dart';
 import 'package:kazumi/pages/collect/collect_library_query.dart';
+import 'package:kazumi/utils/device.dart';
 
 part 'collect_library_card.dart';
 part 'collect_library_controls.dart';
@@ -154,9 +155,12 @@ class _CollectLibraryViewState extends State<CollectLibraryView>
             _focusSearch,
         const SingleActivator(LogicalKeyboardKey.escape): _closeSearch,
       },
+      // Holds focus only for the shortcuts; on TV a page-wide stop would sit
+      // between the controls the D-pad moves across.
       child: Focus(
         focusNode: _libraryFocus,
         autofocus: true,
+        skipTraversal: isTV(),
         child: LayoutBuilder(builder: (context, constraints) {
           final compact = constraints.maxWidth < 600;
           final paged = mobile &&
