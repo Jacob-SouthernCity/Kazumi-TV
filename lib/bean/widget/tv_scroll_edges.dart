@@ -53,16 +53,16 @@ class _TVScrollEdgesState extends State<TVScrollEdges> {
     if (node == null || node is FocusScopeNode || nodeContext == null) {
       return;
     }
-    final scrollable = Scrollable.maybeOf(nodeContext);
+    // A horizontal row, such as a chip list, sits inside the page's list.
+    final scrollable = Scrollable.maybeOf(nodeContext, axis: Axis.vertical);
     final renderObject = nodeContext.findRenderObject();
     if (scrollable == null ||
         renderObject == null ||
         !renderObject.attached ||
-        scrollable.position.axis != Axis.vertical ||
         !scrollable.position.hasContentDimensions) {
       return;
     }
-    final viewport = RenderAbstractViewport.maybeOf(renderObject);
+    final viewport = _verticalViewportOf(renderObject);
     if (viewport == null) {
       return;
     }
@@ -81,6 +81,21 @@ class _TVScrollEdgesState extends State<TVScrollEdges> {
     if ((position.pixels - target).abs() > 0.5) {
       position.animateTo(target, duration: _duration, curve: Curves.easeOut);
     }
+  }
+
+  static RenderViewportBase? _verticalViewportOf(RenderObject object) {
+    RenderObject? current = object;
+    while (current != null) {
+      final viewport = RenderAbstractViewport.maybeOf(current);
+      if (viewport is! RenderViewportBase) {
+        return null;
+      }
+      if (viewport.axis == Axis.vertical) {
+        return viewport;
+      }
+      current = viewport.parent;
+    }
+    return null;
   }
 
   @override
