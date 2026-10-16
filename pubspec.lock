@@ -980,8 +980,8 @@ packages:
     dependency: "direct main"
     description:
       path: media_kit
-      ref: "803c4a27912091db6f839d48d1b984a0d9f588c7"
-      resolved-ref: "803c4a27912091db6f839d48d1b984a0d9f588c7"
+      ref: "6b188ae978808a63e5b58b7ce61f7725238c04c5"
+      resolved-ref: "6b188ae978808a63e5b58b7ce61f7725238c04c5"
       url: "https://github.com/Predidit/media-kit.git"
     source: git
     version: "1.1.11"
@@ -989,8 +989,8 @@ packages:
     dependency: "direct main"
     description:
       path: media_kit_video
-      ref: "803c4a27912091db6f839d48d1b984a0d9f588c7"
-      resolved-ref: "803c4a27912091db6f839d48d1b984a0d9f588c7"
+      ref: "6b188ae978808a63e5b58b7ce61f7725238c04c5"
+      resolved-ref: "6b188ae978808a63e5b58b7ce61f7725238c04c5"
       url: "https://github.com/Predidit/media-kit.git"
     source: git
     version: "1.2.5"
@@ -1795,10 +1795,10 @@ packages:
     dependency: transitive
     description:
       name: wakelock_plus_platform_interface
-      sha256: b13f99e992e7ae6a152e16c5559d3c07ff445b13330192662494e614ca3e7d7b
+      sha256: "764c25504562abc8ac3406f5d175f126b276e6ba916c7c2675690b73368ca384"
       url: "https://pub.dev"
     source: hosted
-    version: "1.5.1"
+    version: "1.7.0"
   watcher:
     dependency: transitive
     description:
@@ -1913,5 +1913,5 @@ packages:
     source: hosted
     version: "2.1.0"
 sdks:
-  dart: ">=3.11.0 <4.0.0"
+  dart: ">=3.12.0 <4.0.0"
   flutter: "3.47.7"
